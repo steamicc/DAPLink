@@ -26,7 +26,11 @@ typedef enum  {
     WRITE_DATA = 0x11,
 
     READ_SECTOR = 0x20,
-    
+
+    WRITE_CONFIG = 0x30,
+    READ_CONFIG = 0x31,
+    CLEAR_CONFIG = 0x32,
+
     STATUS = 0x80,
     ERROR_STATUS = 0x81,
 } steami_i2c_command;

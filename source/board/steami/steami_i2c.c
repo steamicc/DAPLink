@@ -35,6 +35,9 @@ static bool is_command_valid(uint8_t cmd){
         case GET_FILENAME:
         case WRITE_DATA:
         case READ_SECTOR:
+        case WRITE_CONFIG:
+        case READ_CONFIG:
+        case CLEAR_CONFIG:
         case STATUS:
         case ERROR_STATUS:
             return true;
@@ -64,6 +67,15 @@ static uint16_t get_argument_byte_number(uint8_t cmd){
 
         case READ_SECTOR:
             return 2;
+
+        case WRITE_CONFIG:
+            return 31;  /* fixed frame: [offset_hi, offset_lo, len, data(28 bytes max)] */
+
+        case READ_CONFIG:
+            return 2;
+
+        case CLEAR_CONFIG:
+            return 0;
 
         case STATUS:
             return 0;
