@@ -190,7 +190,7 @@ int16_t steami_flash_append_file(uint8_t* data, uint16_t data_len){
 
 bool steami_flash_read_sector(uint32_t sector_number, uint8_t* data){
 
-    if( sector_number >= STEAMI_FLASH_NB_SECTOR ){
+    if( sector_number >= STEAMI_FLASH_FILE_SIZE / STEAMI_FLASH_SECTOR ){
         return false;
     }
 
