@@ -138,7 +138,7 @@ uint32_t steami_flash_get_size(){
 
         for(uint16_t i = 0; i < STEAMI_FLASH_MAX_DATA_SIZE; ++i){
             if( data[i] == 0xFF ){
-                return STEAMI_FLASH_FILE_ADDR + offset + i;
+                return offset + i;
             }
         }
         
@@ -228,13 +228,20 @@ bool steami_flash_erase_config(){
     wait_w25q64_wel();
     wait_w25q64_busy();
     bool result = w25q64_sector_erase(STEAMI_FLASH_CONFIG_ADDR);
+    wait_w25q64_busy();
 
     steami_led_turn_off_blue();
     return result;
 }
 
 bool steami_flash_write_config(uint16_t offset, uint8_t* data, uint16_t len){
+    if( len == 0 || len > 256 ){
+        return false;
+    }
     if( offset + len > STEAMI_FLASH_CONFIG_SIZE ){
+        return false;
+    }
+    if( (offset % 256) + len > 256 ){
         return false;
     }
 
@@ -244,6 +251,7 @@ bool steami_flash_write_config(uint16_t offset, uint8_t* data, uint16_t len){
     wait_w25q64_wel();
     wait_w25q64_busy();
     bool result = w25q64_page_program(data, STEAMI_FLASH_CONFIG_ADDR + offset, len);
+    wait_w25q64_busy();
 
     steami_led_turn_off_blue();
     return result;

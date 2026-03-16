@@ -440,7 +440,11 @@ void process_task()
                 if( task_rx_len >= 3 ){
                     uint16_t offset = ((uint16_t)task_rx[0] << 8) | task_rx[1];
                     uint16_t len = task_rx[2];
-                    if( len <= task_rx_len - 3 && steami_flash_write_config(offset, task_rx + 3, len) ){
+                    if( len > task_rx_len - 3 ){
+                        error_status_bad_parameter(&status_error);
+                        steami_uart_write_string("ERROR Bad config write parameters.\n");
+                    }
+                    else if( steami_flash_write_config(offset, task_rx + 3, len) ){
                         steami_uart_write_string("Config written.\n");
                     }
                     else{

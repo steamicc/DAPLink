@@ -3,12 +3,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define STEAMI_FLASH_CONFIG_ADDR  (uint32_t)0x00000000
+#define STEAMI_FLASH_FILE_ADDR    (uint32_t)0x00000000
+#define STEAMI_FLASH_CONFIG_ADDR  (uint32_t)0x007FE000  /* last 4K before filename */
 #define STEAMI_FLASH_CONFIG_SIZE  4096
-#define STEAMI_FLASH_FILE_ADDR    (uint32_t)0x00001000  /* after config zone */
 #define STEAMI_FLASH_NAME_ADDR    (uint32_t)0x007FF000
 
-#define STEAMI_FLASH_FILE_SIZE    8380416  /* 0x7FF000 - 0x001000 */
+#define STEAMI_FLASH_FILE_SIZE    8380416  /* 0x7FE000 - 0x000000 (excludes config) */
 
 #define STEAMI_FLASH_SECTOR 256
 #define STEAMI_FLASH_4K   4096
@@ -124,7 +124,7 @@ bool steami_flash_erase_config();
  *
  * @param offset byte offset within the config zone (0-4095)
  * @param data data array
- * @param len number of bytes to write (max 256 per call, must stay within one page)
+ * @param len number of bytes to write (max 28 per call via I2C, must stay within one 256-byte page)
  * @return TRUE if successful, FALSE otherwise
  */
 bool steami_flash_write_config(uint16_t offset, uint8_t* data, uint16_t len);

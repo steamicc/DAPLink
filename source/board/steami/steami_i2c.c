@@ -69,7 +69,7 @@ static uint16_t get_argument_byte_number(uint8_t cmd){
             return 2;
 
         case WRITE_CONFIG:
-            return 31;
+            return 31;  /* fixed frame: [offset_hi, offset_lo, len, data(28 bytes max)] */
 
         case READ_CONFIG:
             return 2;
