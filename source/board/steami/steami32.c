@@ -112,6 +112,10 @@ typedef enum {
 
     TASK_READ_SECTOR,
 
+    TASK_WRITE_CONFIG,
+    TASK_READ_CONFIG,
+    TASK_CLEAR_CONFIG,
+
     TASK_WAIT_FLASH_BUSY,
 } steami_task;
 
@@ -204,6 +208,40 @@ static void on_I2C_receive_command(steami_i2c_command cmd, uint8_t* rx, uint16_t
             task_rx_len = rx_len;
             break;
         }
+
+        case WRITE_CONFIG:{
+            if(is_busy()){
+                steami_uart_write_string("ERROR I2C busy.\n");
+                break;
+            }
+            if(rx_len < 3){
+                error_status_bad_parameter(&status_error);
+                break;
+            }
+            current_task = TASK_WRITE_CONFIG;
+            memcpy(task_rx, rx, rx_len);
+            task_rx_len = rx_len;
+            break;
+        }
+
+        case READ_CONFIG:{
+            if(is_busy()){
+                steami_uart_write_string("ERROR I2C busy.\n");
+                break;
+            }
+            current_task = TASK_READ_CONFIG;
+            memcpy(task_rx, rx, rx_len);
+            task_rx_len = rx_len;
+            break;
+        }
+
+        case CLEAR_CONFIG:
+            if(is_busy()){
+                steami_uart_write_string("ERROR I2C busy.\n");
+                break;
+            }
+            current_task = TASK_CLEAR_CONFIG;
+            break;
 
         case STATUS:{
             uint8_t status = 0x00;
@@ -393,6 +431,65 @@ void process_task()
                 break;
             }
 
+
+            case TASK_WRITE_CONFIG:{
+                if( steami_flash_is_busy() ){
+                    break;
+                }
+                // task_rx: [offset_hi, offset_lo, len, data...]
+                if( task_rx_len >= 3 ){
+                    uint16_t offset = ((uint16_t)task_rx[0] << 8) | task_rx[1];
+                    uint16_t len = task_rx[2];
+                    if( len <= task_rx_len - 3 && steami_flash_write_config(offset, task_rx + 3, len) ){
+                        steami_uart_write_string("Config written.\n");
+                    }
+                    else{
+                        error_status_set_last_command_fail(&status_error);
+                        steami_uart_write_string("ERROR Unable to write config.\n");
+                    }
+                }
+                else{
+                    error_status_bad_parameter(&status_error);
+                }
+                current_task = TASK_NONE;
+                break;
+            }
+
+            case TASK_READ_CONFIG:{
+                if( steami_flash_is_busy() ){
+                    break;
+                }
+                if( task_rx_len == 2 ){
+                    uint16_t offset = ((uint16_t)task_rx[0] << 8) | task_rx[1];
+                    if( steami_flash_read_config(offset, buffer_sector, STEAMI_FLASH_SECTOR) ){
+                        steami_i2c_set_tx_data(buffer_sector, STEAMI_FLASH_SECTOR);
+                    }
+                    else{
+                        error_status_set_last_command_fail(&status_error);
+                        steami_uart_write_string("ERROR Unable to read config.\n");
+                    }
+                }
+                else{
+                    error_status_bad_parameter(&status_error);
+                }
+                current_task = TASK_NONE;
+                break;
+            }
+
+            case TASK_CLEAR_CONFIG:{
+                if( steami_flash_is_busy() ){
+                    break;
+                }
+                if( steami_flash_erase_config() ){
+                    steami_uart_write_string("Config erased.\n");
+                }
+                else{
+                    error_status_set_last_command_fail(&status_error);
+                    steami_uart_write_string("ERROR Unable to erase config.\n");
+                }
+                current_task = TASK_NONE;
+                break;
+            }
 
             case TASK_WAIT_FLASH_BUSY:
                 if( !steami_flash_is_busy() ){

@@ -220,3 +220,40 @@ uint16_t steami_flash_read_file(uint8_t* data, uint16_t data_len, uint32_t offse
 bool steami_flash_is_busy(){
     return w25q64_is_busy();
 }
+
+bool steami_flash_erase_config(){
+    steami_led_turn_on_blue();
+
+    w25q64_write_enable();
+    wait_w25q64_wel();
+    wait_w25q64_busy();
+    bool result = w25q64_sector_erase(STEAMI_FLASH_CONFIG_ADDR);
+
+    steami_led_turn_off_blue();
+    return result;
+}
+
+bool steami_flash_write_config(uint16_t offset, uint8_t* data, uint16_t len){
+    if( offset + len > STEAMI_FLASH_CONFIG_SIZE ){
+        return false;
+    }
+
+    steami_led_turn_on_blue();
+
+    w25q64_write_enable();
+    wait_w25q64_wel();
+    wait_w25q64_busy();
+    bool result = w25q64_page_program(data, STEAMI_FLASH_CONFIG_ADDR + offset, len);
+
+    steami_led_turn_off_blue();
+    return result;
+}
+
+bool steami_flash_read_config(uint16_t offset, uint8_t* data, uint16_t len){
+    if( offset + len > STEAMI_FLASH_CONFIG_SIZE ){
+        return false;
+    }
+
+    wait_w25q64_busy();
+    return w25q64_read_data(data, STEAMI_FLASH_CONFIG_ADDR + offset, len);
+}

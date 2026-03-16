@@ -3,10 +3,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define STEAMI_FLASH_FILE_ADDR  (uint32_t)0x00000000
-#define STEAMI_FLASH_NAME_ADDR  (uint32_t)0x007FF000
+#define STEAMI_FLASH_CONFIG_ADDR  (uint32_t)0x00000000
+#define STEAMI_FLASH_CONFIG_SIZE  4096
+#define STEAMI_FLASH_FILE_ADDR    (uint32_t)0x00001000  /* after config zone */
+#define STEAMI_FLASH_NAME_ADDR    (uint32_t)0x007FF000
 
-#define STEAMI_FLASH_FILE_SIZE  8384512
+#define STEAMI_FLASH_FILE_SIZE    8380416  /* 0x7FF000 - 0x001000 */
 
 #define STEAMI_FLASH_SECTOR 256
 #define STEAMI_FLASH_4K   4096
@@ -109,3 +111,30 @@ uint16_t steami_flash_read_file(uint8_t* data, uint16_t data_len, uint32_t offse
  * @return TRUE if the flash is buzy flag is high, FALSE otherwise 
  */
 bool steami_flash_is_busy();
+
+/**
+ * @brief Erase the 4K config zone at STEAMI_FLASH_CONFIG_ADDR.
+ *
+ * @return TRUE if successful, FALSE otherwise
+ */
+bool steami_flash_erase_config();
+
+/**
+ * @brief Write data to the config zone.
+ *
+ * @param offset byte offset within the config zone (0-4095)
+ * @param data data array
+ * @param len number of bytes to write (max 256 per call, must stay within one page)
+ * @return TRUE if successful, FALSE otherwise
+ */
+bool steami_flash_write_config(uint16_t offset, uint8_t* data, uint16_t len);
+
+/**
+ * @brief Read data from the config zone.
+ *
+ * @param offset byte offset within the config zone (0-4095)
+ * @param data buffer for read data
+ * @param len number of bytes to read
+ * @return TRUE if successful, FALSE otherwise
+ */
+bool steami_flash_read_config(uint16_t offset, uint8_t* data, uint16_t len);
