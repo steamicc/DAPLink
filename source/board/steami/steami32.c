@@ -121,6 +121,7 @@ static char buffer_filename[STEAMI_FLASH_NAME_SIZE] = {'\0'};
 static uint8_t buffer_sector[STEAMI_FLASH_SECTOR] = {0};
 static uint8_t task_rx[STEAMI_I2C_RX_BUFFER_SIZE] = {'\0'};
 static uint16_t task_rx_len = 0;
+static uint16_t task_rx_offset = 0;
 static uint8_t status_error = 0;
 static bool is_user_delete_file_flash = false;
 
@@ -188,6 +189,7 @@ static void on_I2C_receive_command(steami_i2c_command cmd, uint8_t* rx, uint16_t
 
             current_task = TASK_WRITE_DATA_COUNT;
             task_rx_len = rx[0];
+            task_rx_offset = 0;
             memcpy(task_rx, rx + 1, task_rx_len);
             break;
         
@@ -349,21 +351,22 @@ void process_task()
 
                 if( task_rx_len == 0){
                     steami_uart_write_string("No more data in rx_len to write to flash.\n");
+                    task_rx_offset = 0;
                     current_task = TASK_NONE;
                     break;
                 }
 
-                uint32_t bytes_wrote = 0;
-                int16_t bytes_sent = steami_flash_append_file(task_rx + bytes_wrote, task_rx_len);
+                int16_t bytes_sent = steami_flash_append_file(task_rx + task_rx_offset, task_rx_len);
 
                 if( bytes_sent == -1 ){
                     error_status_set_last_command_fail(&status_error);
                     steami_uart_write_string("ERROR Unable to write data to flash\n");
+                    task_rx_offset = 0;
                     current_task = TASK_NONE;
                 }
                 else{
                     task_rx_len -= bytes_sent;
-                    bytes_wrote += bytes_sent;
+                    task_rx_offset += bytes_sent;
                     current_task = TASK_WRITE_DATA_WRITE;
                 }
                 break;
@@ -371,12 +374,19 @@ void process_task()
 
             case TASK_READ_SECTOR:{
 
-                if( task_rx_len == 1 && steami_flash_read_sector(task_rx[0], buffer_sector) ){
-                    steami_i2c_set_tx_data(buffer_sector, 256);
+                if( task_rx_len == 2 ){
+                    uint16_t sector = ((uint16_t)task_rx[0] << 8) | task_rx[1];
+                    if( steami_flash_read_sector(sector, buffer_sector) ){
+                        steami_i2c_set_tx_data(buffer_sector, STEAMI_FLASH_SECTOR);
+                    }
+                    else{
+                        error_status_set_last_command_fail(&status_error);
+                        steami_uart_write_string("ERROR Unable to read sector (bad sector parameter ?)\n");
+                    }
                 }
                 else{
-                    error_status_set_last_command_fail(&status_error);
-                    steami_uart_write_string("ERROR Unable to read sector (bad sector parameter ?)\n");
+                    error_status_bad_parameter(&status_error);
+                    steami_uart_write_string("ERROR READ_SECTOR expects 2 bytes (sector number)\n");
                 }
 
                 current_task = TASK_WAIT_FLASH_BUSY;
