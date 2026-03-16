@@ -194,7 +194,7 @@ bool steami_flash_read_sector(uint32_t sector_number, uint8_t* data){
         return false;
     }
 
-    return w25q64_read_data(data, 0, 256);
+    return w25q64_read_data(data, sector_number * STEAMI_FLASH_SECTOR, STEAMI_FLASH_SECTOR);
 }
 
 uint16_t steami_flash_read_file(uint8_t* data, uint16_t data_len, uint32_t offset){

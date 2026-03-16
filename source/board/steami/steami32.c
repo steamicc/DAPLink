@@ -371,12 +371,19 @@ void process_task()
 
             case TASK_READ_SECTOR:{
 
-                if( task_rx_len == 1 && steami_flash_read_sector(task_rx[0], buffer_sector) ){
-                    steami_i2c_set_tx_data(buffer_sector, 256);
+                if( task_rx_len == 2 ){
+                    uint16_t sector = ((uint16_t)task_rx[0] << 8) | task_rx[1];
+                    if( steami_flash_read_sector(sector, buffer_sector) ){
+                        steami_i2c_set_tx_data(buffer_sector, 256);
+                    }
+                    else{
+                        error_status_set_last_command_fail(&status_error);
+                        steami_uart_write_string("ERROR Unable to read sector (bad sector parameter ?)\n");
+                    }
                 }
                 else{
-                    error_status_set_last_command_fail(&status_error);
-                    steami_uart_write_string("ERROR Unable to read sector (bad sector parameter ?)\n");
+                    error_status_bad_parameter(&status_error);
+                    steami_uart_write_string("ERROR READ_SECTOR expects 2 bytes (sector number)\n");
                 }
 
                 current_task = TASK_WAIT_FLASH_BUSY;
