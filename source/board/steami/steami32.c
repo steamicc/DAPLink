@@ -374,7 +374,7 @@ void process_task()
                 if( task_rx_len == 2 ){
                     uint16_t sector = ((uint16_t)task_rx[0] << 8) | task_rx[1];
                     if( steami_flash_read_sector(sector, buffer_sector) ){
-                        steami_i2c_set_tx_data(buffer_sector, 256);
+                        steami_i2c_set_tx_data(buffer_sector, STEAMI_FLASH_SECTOR);
                     }
                     else{
                         error_status_set_last_command_fail(&status_error);
