@@ -40,7 +40,7 @@ Here's a table summarizing the commands available via I2C, their description, pa
 | Clear Flash     | 0x10         | _NONE_          | _NONE_    | Erase file content.                                                                                                                                                                                                                                                   |
 | Write data      | 0x11         | 1 + 30 bytes    | _NONE_    | Append data to file. The first byte is the number of data to add.                                                                                                                                                                                                     |
 | Read sector     | 0x20         | 2 bytes         | 256 bytes | Read a sector (the parameters must be between 0-32768)                                                                                                                                                                                                                |
-| Write config    | 0x30         | 2 + 1 + N bytes | _NONE_    | Write to internal flash config zone. First 2 bytes = offset, 3rd byte = data length, followed by data bytes.                                                                                                                                                          |
+| Write config    | 0x30         | 31 bytes        | _NONE_    | Write to internal flash config zone. Bytes 0-1 = offset, byte 2 = data length (max 28), bytes 3-30 = data (zero-padded). Total is always 31 bytes.                                                                                                                   |
 | Read config     | 0x31         | 2 bytes         | 256 bytes | Read 256 bytes from internal flash config zone at the given offset.                                                                                                                                                                                                   |
 | Clear config    | 0x32         | _NONE_          | _NONE_    | Erase the entire config zone (1 KB).                                                                                                                                                                                                                                  |
 | Status Register | 0x80         | _NONE_          | 1 byte    | Get the status register (see below)                                                                                                                                                                                                                                   |
@@ -464,9 +464,13 @@ void process_task()
             case TASK_WRITE_CONFIG:{
                 uint16_t offset = ((uint16_t)task_rx[0] << 8) | task_rx[1];
                 uint8_t data_len = task_rx[2];
+                uint8_t max_payload = task_rx_len - 3;
 
-                if( data_len > task_rx_len - 3 ){
-                    data_len = task_rx_len - 3;
+                if( data_len > max_payload ){
+                    error_status_bad_parameter(&status_error);
+                    steami_uart_write_string("ERROR WRITE_CONFIG data_len exceeds payload\n");
+                    current_task = TASK_NONE;
+                    break;
                 }
 
                 if( steami_config_write(offset, task_rx + 3, data_len) ){
