@@ -40,6 +40,9 @@ Here's a table summarizing the commands available via I2C, their description, pa
 | Clear Flash     | 0x10         | _NONE_          | _NONE_    | Erase file content.                                                                                                                                                                                                                                                   |
 | Write data      | 0x11         | 1 + 30 bytes    | _NONE_    | Append data to file. The first byte is the number of data to add.                                                                                                                                                                                                     |
 | Read sector     | 0x20         | 2 bytes         | 256 bytes | Read a sector (the parameters must be between 0-32768)                                                                                                                                                                                                                |
+| Write config    | 0x30         | 2 + 1 + N bytes | _NONE_    | Write to internal flash config zone. First 2 bytes = offset, 3rd byte = data length, followed by data bytes.                                                                                                                                                          |
+| Read config     | 0x31         | 2 bytes         | 256 bytes | Read 256 bytes from internal flash config zone at the given offset.                                                                                                                                                                                                   |
+| Clear config    | 0x32         | _NONE_          | _NONE_    | Erase the entire config zone (1 KB).                                                                                                                                                                                                                                  |
 | Status Register | 0x80         | _NONE_          | 1 byte    | Get the status register (see below)                                                                                                                                                                                                                                   |
 | Error Register  | 0x81         | _NONE_          | 1 byte    | Get the error register (see below)                                                                                                                                                                                                                                    |
 
@@ -91,6 +94,7 @@ The error register provides information on errors encountered by the device.
 #include "steami_led.h"
 #include "w25q64.h"
 #include "steami_flash.h"
+#include "steami_config.h"
 #include "error_status.h"
 
 #include <stdlib.h>
@@ -111,6 +115,10 @@ typedef enum {
     TASK_WRITE_DATA_WRITE,
 
     TASK_READ_SECTOR,
+
+    TASK_READ_CONFIG,
+    TASK_WRITE_CONFIG,
+    TASK_CLEAR_CONFIG,
 
     TASK_WAIT_FLASH_BUSY,
 } steami_task;
@@ -202,6 +210,45 @@ static void on_I2C_receive_command(steami_i2c_command cmd, uint8_t* rx, uint16_t
             current_task = TASK_READ_SECTOR;
             memcpy(task_rx, rx, rx_len);
             task_rx_len = rx_len;
+            break;
+        }
+
+        case READ_CONFIG:{
+            if(is_busy()){
+                steami_uart_write_string("ERROR I2C busy.\n");
+                break;
+            }
+
+            current_task = TASK_READ_CONFIG;
+            memcpy(task_rx, rx, rx_len);
+            task_rx_len = rx_len;
+            break;
+        }
+
+        case WRITE_CONFIG:{
+            if(is_busy()){
+                steami_uart_write_string("ERROR I2C busy.\n");
+                break;
+            }
+
+            if(rx_len < 3){
+                error_status_bad_parameter(&status_error);
+                break;
+            }
+
+            current_task = TASK_WRITE_CONFIG;
+            memcpy(task_rx, rx, rx_len);
+            task_rx_len = rx_len;
+            break;
+        }
+
+        case CLEAR_CONFIG:{
+            if(is_busy()){
+                steami_uart_write_string("ERROR I2C busy.\n");
+                break;
+            }
+
+            current_task = TASK_CLEAR_CONFIG;
             break;
         }
 
@@ -393,6 +440,59 @@ void process_task()
                 break;
             }
 
+
+            case TASK_READ_CONFIG:{
+                if( task_rx_len == 2 ){
+                    uint16_t offset = ((uint16_t)task_rx[0] << 8) | task_rx[1];
+                    if( steami_config_read(offset, buffer_sector, 256) ){
+                        steami_i2c_set_tx_data(buffer_sector, 256);
+                    }
+                    else{
+                        error_status_set_last_command_fail(&status_error);
+                        steami_uart_write_string("ERROR Unable to read config (bad offset)\n");
+                    }
+                }
+                else{
+                    error_status_bad_parameter(&status_error);
+                    steami_uart_write_string("ERROR READ_CONFIG expects 2 bytes (offset)\n");
+                }
+
+                current_task = TASK_NONE;
+                break;
+            }
+
+            case TASK_WRITE_CONFIG:{
+                uint16_t offset = ((uint16_t)task_rx[0] << 8) | task_rx[1];
+                uint8_t data_len = task_rx[2];
+
+                if( data_len > task_rx_len - 3 ){
+                    data_len = task_rx_len - 3;
+                }
+
+                if( steami_config_write(offset, task_rx + 3, data_len) ){
+                    steami_uart_write_string("Config written OK\n");
+                }
+                else{
+                    error_status_set_last_command_fail(&status_error);
+                    steami_uart_write_string("ERROR Unable to write config\n");
+                }
+
+                current_task = TASK_NONE;
+                break;
+            }
+
+            case TASK_CLEAR_CONFIG:{
+                if( steami_config_erase() ){
+                    steami_uart_write_string("Config erased OK\n");
+                }
+                else{
+                    error_status_set_last_command_fail(&status_error);
+                    steami_uart_write_string("ERROR Unable to erase config\n");
+                }
+
+                current_task = TASK_NONE;
+                break;
+            }
 
             case TASK_WAIT_FLASH_BUSY:
                 if( !steami_flash_is_busy() ){
