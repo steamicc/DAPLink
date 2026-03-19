@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "daplink_addr.h"
+#include "compiler.h"
 
 /** Start address of the config zone (BL/IF gap). */
 #define STEAMI_CONFIG_ADDR  (DAPLINK_ROM_BL_START + DAPLINK_ROM_BL_SIZE)
@@ -21,10 +22,7 @@
 #define STEAMI_CONFIG_SIZE  DAPLINK_SECTOR_SIZE
 
 /* Compile-time check: config zone must fit between bootloader and interface. */
-_Static_assert(
-    STEAMI_CONFIG_ADDR + STEAMI_CONFIG_SIZE <= DAPLINK_ROM_IF_START,
-    "Config zone overlaps with interface firmware"
-);
+COMPILER_ASSERT(STEAMI_CONFIG_ADDR + STEAMI_CONFIG_SIZE <= DAPLINK_ROM_IF_START);
 
 /**
  * @brief Read data from the config zone.
