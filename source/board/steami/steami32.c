@@ -637,6 +637,18 @@ void board_30ms_hook(void)
     process_task();
 }
 
+// DAP_ResetTarget (CMSIS-DAP 0x0A): pulse nRESET so that the STM32WB55
+// restarts its program, the same pulse as after a drag-and-drop flash.
+// The SWD pins are left as they are, so an open debug session is not
+// switched off.
+uint32_t board_reset_target(void)
+{
+    swd_set_target_reset(1);
+    osDelay(2);
+    swd_set_target_reset(0);
+    return 1;
+}
+
 const board_info_t g_board_info = {
     .info_version = kBoardInfoVersion,
     .board_id = "0839",

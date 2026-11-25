@@ -230,3 +230,10 @@ void target_forward_reset(bool assert_reset)
 void gpio_set_board_power(bool powerEnabled)
 {
 }
+
+// Device specific reset sequence for the CMSIS-DAP DAP_ResetTarget command.
+// Boards that implement one override this and return 1.
+__WEAK uint32_t board_reset_target(void)
+{
+    return 0;
+}

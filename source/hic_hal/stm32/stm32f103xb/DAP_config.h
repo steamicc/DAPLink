@@ -550,9 +550,11 @@ when a device needs a time-critical unlock sequence that enables the debug port.
 \return 0 = no device specific reset sequence is implemented.\n
         1 = a device specific reset sequence is implemented.
 */
+uint32_t board_reset_target(void);  // weak default in gpio.c returns 0
+
 __STATIC_INLINE uint32_t RESET_TARGET(void)
 {
-    return (0);              // change to '1' when a device reset sequence is implemented
+    return board_reset_target();
 }
 
 ///@}
