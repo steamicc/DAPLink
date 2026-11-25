@@ -204,11 +204,19 @@ uint32_t DAP_ProcessVendorCommand(const uint8_t *request, uint8_t *response) {
     case ID_DAP_Vendor28: break;
     case ID_DAP_Vendor29: break;
     case ID_DAP_Vendor30: break;
-    case ID_DAP_Vendor31: break;
+    case ID_DAP_SteamiVersion:
+        num += board_vendor_version(response); // response count only
+        break;
     default: break;
   }
 
   return (num);
+}
+
+__WEAK uint8_t board_vendor_version(uint8_t *response)
+{
+    (void)response;
+    return 0;
 }
 
 ///@}

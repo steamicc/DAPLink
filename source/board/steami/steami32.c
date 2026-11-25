@@ -96,6 +96,8 @@ The error register provides information on errors encountered by the device.
 #include "steami_flash.h"
 #include "steami_config.h"
 #include "error_status.h"
+#include "steami_release.h"
+#include "daplink_vendor_commands.h"
 
 #include <stdlib.h>
 #include <ctype.h>
@@ -647,6 +649,30 @@ uint32_t board_reset_target(void)
     osDelay(2);
     swd_set_target_reset(0);
     return 1;
+}
+
+static uint8_t *put_u32_le(uint8_t *p, uint32_t value)
+{
+    for (int i = 0; i < 4; i++) {
+        *p++ = (uint8_t)(value >> (8 * i));
+    }
+    return p;
+}
+
+// ID_DAP_SteamiVersion (CMSIS-DAP 0x9F): "STM1", then the release number and
+// the release date YYYYMMDD, both uint32 little-endian (steami_release.h).
+// The mark tells a reply from the leftovers of the response buffer that an
+// older DAPLink sends back with the bare command ID.
+uint8_t board_vendor_version(uint8_t *response)
+{
+    uint8_t *p = response;
+    *p++ = 'S';
+    *p++ = 'T';
+    *p++ = 'M';
+    *p++ = '1';
+    p = put_u32_le(p, STEAMI_RELEASE_NUMBER);
+    p = put_u32_le(p, STEAMI_RELEASE_DATE);
+    return (uint8_t)(p - response);
 }
 
 const board_info_t g_board_info = {
