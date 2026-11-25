@@ -34,6 +34,24 @@ jobs:
         pip install -r requirements.txt
         arm-none-eabi-gcc --version
         
+    - name: Set release name, number and date
+      run: |
+        day=$(date -u +'%Y-%m-%d')
+        echo "RELEASE_NAME=${day}.${{ github.run_number }}" >> $GITHUB_ENV
+        echo "RELEASE_NUMBER=${{ github.run_number }}" >> $GITHUB_ENV
+        echo "RELEASE_DATE=${day//-/}" >> $GITHUB_ENV
+
+    # Untracked on purpose: rewriting steami_release.h would make DETAILS.TXT
+    # report "Local Mods: 1".
+    - name: Stamp the STeaMi build with the release number and date
+      run: |
+        f=source/board/steami/steami_release_ci.h
+        printf '#define STEAMI_RELEASE_NUMBER %su\n#define STEAMI_RELEASE_DATE %su\n' "$RELEASE_NUMBER" "$RELEASE_DATE" > "$f"
+        cat "$f"
+        grep -qx "#define STEAMI_RELEASE_NUMBER ${RELEASE_NUMBER}u" "$f"
+        grep -qx "#define STEAMI_RELEASE_DATE ${RELEASE_DATE}u" "$f"
+        git diff --quiet --exit-code
+
     - name: Compile stm32f103xb_bl
       run: |
         python tools/progen_compile.py -t make_gcc_arm --clean --parallel stm32f103xb_bl
@@ -50,9 +68,6 @@ jobs:
       run: |
         python tools/progen_compile.py -t make_gcc_arm --clean --parallel stm32f103xb_steami32_if
         
-
-    - name: Set environment variable
-      run: echo "RELEASE_NAME=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
     - name: Generate Release
       uses: softprops/action-gh-release@v2

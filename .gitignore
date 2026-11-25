@@ -98,3 +98,6 @@ mbed-os/
 
 #vscode editor
 .vscode
+
+# STeaMi release stamp written by generate_release.yml
+source/board/steami/steami_release_ci.h

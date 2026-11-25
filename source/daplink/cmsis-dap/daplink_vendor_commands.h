@@ -35,5 +35,13 @@
 #define ID_DAP_MSD_Close                ID_DAP_Vendor11
 #define ID_DAP_MSD_Write                ID_DAP_Vendor12
 #define ID_DAP_SelectEraseMode          ID_DAP_Vendor13
+#define ID_DAP_SteamiVersion            ID_DAP_Vendor31
 //@}
+
+/** Fill the response of ID_DAP_SteamiVersion, after its command ID byte.
+ * The default (weak) version writes nothing and returns 0, so the command
+ * answers its command ID only. A board that implements it returns the number
+ * of bytes written.
+ */
+uint8_t board_vendor_version(uint8_t *response);
 
