@@ -9,7 +9,9 @@ on:
     # Release only when a push can change the firmware. When in doubt, release.
     # Workflow/CI changes never release. After changing the gcc version or the
     # target list in this workflow, start a release by hand (Actions >
-    # Generate Release > Run workflow): workflow_dispatch still works.
+    # Generate Release > Run workflow): workflow_dispatch still works, but
+    # only from release_letssteam. Run from any other branch or a tag, the
+    # first step fails and nothing is released.
     paths:
       - 'source/**'
       - 'records/**'
@@ -34,6 +36,17 @@ jobs:
         gcc: ['10.3-2021.10']
 
     steps:
+    # A manual run from another branch would publish unreviewed firmware as
+    # Latest, and the downstream bots would pin it.
+    - name: Release only from release_letssteam
+      env:
+        REF: ${{ github.ref }}
+      run: |
+        if [ "$REF" != refs/heads/release_letssteam ]; then
+          echo "::error::Generate Release runs only from release_letssteam, not from $REF."
+          exit 1
+        fi
+
     - uses: actions/checkout@v2
     - name: Set up Python 3.10
       uses: actions/setup-python@v2
