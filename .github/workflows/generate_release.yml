@@ -7,6 +7,9 @@ on:
   push:
     branches: [ release_letssteam ]
     # Release only when a push can change the firmware. When in doubt, release.
+    # Workflow/CI changes never release. After changing the gcc version or the
+    # target list in this workflow, start a release by hand (Actions >
+    # Generate Release > Run workflow): workflow_dispatch still works.
     paths:
       - 'source/**'
       - 'records/**'
@@ -14,7 +17,7 @@ on:
       - 'tools/**'
       - 'requirements.txt'
       - 'mbed-os.lib'
-      - '.github/workflows/generate_release.yml'
+      - '.gitattributes'
   workflow_dispatch:
 
 # A release in progress is never cancelled.
