@@ -6,7 +6,21 @@ name: Generate Release
 on:
   push:
     branches: [ release_letssteam ]
+    # Release only when a push can change the firmware. When in doubt, release.
+    paths:
+      - 'source/**'
+      - 'records/**'
+      - 'projects.yaml'
+      - 'tools/**'
+      - 'requirements.txt'
+      - 'mbed-os.lib'
+      - '.github/workflows/generate_release.yml'
   workflow_dispatch:
+
+# A release in progress is never cancelled.
+concurrency:
+  group: generate-release
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -90,3 +104,30 @@ jobs:
           projectfiles/make_gcc_arm/stm32f103xb_steami32_if/build/stm32f103xb_steami32_if_crc.bin
           projectfiles/make_gcc_arm/stm32f103xb_steami32_if/build/stm32f103xb_steami32_if_crc.txt
         
+    - name: Jeton pour les robots en aval
+      id: jeton_aval
+      continue-on-error: true   # without a token, warn and let the bots' crons take over
+      uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+      with:
+        client-id: ${{ secrets.RELEASE_APP_ID }}
+        private-key: ${{ secrets.RELEASE_APP_SECRET }}
+        owner: steamicc
+        repositories: arduino-steami-devcontainer,wiki_steami   # the target repositories, comma-separated
+        permission-actions: write
+
+    - name: Déclencher les robots en aval
+      continue-on-error: true   # a failed trigger never fails the release
+      env:
+        GH_TOKEN: ${{ steps.jeton_aval.outputs.token }}
+        JETON: ${{ steps.jeton_aval.outcome }}
+      run: |
+        if [ "$JETON" != success ]; then
+          echo "::warning::App token unavailable: the downstream bots will run on their cron."
+          exit 0
+        fi
+        # One target per "<repository> <bot>" string; a failed target does not stop the next ones.
+        for cible in "arduino-steami-devcontainer suivre-daplink.yml" "wiki_steami suivre-daplink.yml"; do
+          read -r repo workflow <<<"$cible"
+          gh workflow run "$workflow" -R "steamicc/$repo" \
+            || echo "::warning::Bot $workflow of steamicc/$repo not triggered: its cron will take over (check the App's Actions write permission and its installation on this repository)."
+        done
